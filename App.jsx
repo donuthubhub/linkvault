@@ -355,14 +355,14 @@ export default function LinkVault() {
 
       <ConfirmModal data={confirm} onCancel={() => setConfirm(null)} onConfirm={() => { confirm.onYes(); setConfirm(null); }} />
 
-      <style>{\`
+      <style>{`
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 * { box-sizing: border-box; margin: 0; padding: 0; }
 input::placeholder, textarea::placeholder { color: #6b7a99; }
 select option { background: #1c2230; color: #f0f4ff; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #0a0c10; } ::-webkit-scrollbar-thumb { background: #252d3d; border-radius: 3px; }
-\`}</style>
+`}</style>
     </div>
   );
 }
