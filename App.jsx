@@ -42,6 +42,17 @@ function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString();
 }
 function fmtDate(s) { try { return new Date(s).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return s; } }
+function dayLabel(s) { try { return new Date(s).toLocaleDateString([], { year: "numeric", month: "long", day: "numeric" }); } catch { return s; } }
+function groupByDay(items) {
+  const groups = [];
+  const map = {};
+  for (const l of items) {
+    const key = dayLabel(l.dateAdded);
+    if (!map[key]) { map[key] = []; groups.push({ key, items: map[key] }); }
+    map[key].push(l);
+  }
+  return groups;
+}
 
 const inputStyle = { width: "100%", background: C.surface2, border: "1px solid " + C.border, borderRadius: 8, padding: "9px 12px", color: C.text, fontSize: 13, outline: "none", boxSizing: "border-box" };
 
@@ -138,6 +149,7 @@ export default function LinkVault() {
   const [filterProject, setFilterProject] = useState("All");
   const [filterCategory, setFilterCategory] = useState("All");
   const [showArchived, setShowArchived] = useState(false);
+  const [viewMode, setViewMode] = useState("grid");
   const [showManage, setShowManage] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const [form, setForm] = useState({ url: "", title: "", project: "", category: "", note: "", changeNote: "" });
@@ -264,7 +276,12 @@ export default function LinkVault() {
         {["All", ...activeCategories].map(c => (
           <button key={c} onClick={() => setFilterCategory(c)} style={{ padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: "pointer", border: "1px solid", background: filterCategory === c ? (c === "All" ? C.accent : colorFor(c, categories)) : "transparent", borderColor: filterCategory === c ? (c === "All" ? C.accent : colorFor(c, categories)) : C.border, color: filterCategory === c ? "#fff" : C.muted }}>{c === "All" ? "All Types" : ((CATEGORY_ICONS[c] || "") + " " + c)}</button>
         ))}
-        <button onClick={() => setShowArchived(s => !s)} style={{ marginLeft: "auto", padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid", background: showArchived ? "#6b7a99" : "transparent", borderColor: showArchived ? "#6b7a99" : C.border, color: showArchived ? "#fff" : C.muted, display: "flex", alignItems: "center", gap: 5 }}><Archive size={12} /> Archived{archivedCount ? " (" + archivedCount + ")" : ""}</button>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
+          {["grid", "date"].map(m => (
+            <button key={m} onClick={() => setViewMode(m)} style={{ padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid", background: viewMode === m ? C.accent : "transparent", borderColor: viewMode === m ? C.accent : C.border, color: viewMode === m ? "#fff" : C.muted }}>{m === "grid" ? "Grid" : "Date"}</button>
+          ))}
+          <button onClick={() => setShowArchived(s => !s)} style={{ padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid", background: showArchived ? "#6b7a99" : "transparent", borderColor: showArchived ? "#6b7a99" : C.border, color: showArchived ? "#fff" : C.muted, display: "flex", alignItems: "center", gap: 5 }}><Archive size={12} /> Archived{archivedCount ? " (" + archivedCount + ")" : ""}</button>
+        </div>
       </div>
 
       <div style={{ padding: 24, maxWidth: 1280, margin: "0 auto" }}>
@@ -272,9 +289,24 @@ export default function LinkVault() {
           <div style={{ textAlign: "center", padding: 80, color: C.muted }}><Loader2 size={32} style={{ animation: "spin 1s linear infinite", margin: "0 auto 12px", display: "block" }} /><div style={{ fontSize: 14 }}>Loading your links...</div></div>
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: 80, color: C.muted }}><LinkIcon size={40} style={{ margin: "0 auto 16px", display: "block", opacity: 0.3 }} /><div style={{ fontSize: 16, fontWeight: 600, color: C.text, marginBottom: 8 }}>{showArchived ? "No archived links" : (links.length === 0 ? "No links yet" : "No matches")}</div><div style={{ fontSize: 13 }}>{showArchived ? "Archived links will appear here" : (links.length === 0 ? 'Click "Add Link" to save your first link' : "Try a different filter or search term")}</div></div>
-        ) : (
+        ) : viewMode === "grid" ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 14 }}>
             {filtered.map(link => <LinkCard key={link.id} link={link} projects={projects} categories={categories} onEdit={openEdit} onArchive={l => setStatus(l, "archived")} onUnarchive={l => setStatus(l, "active")} onDelete={doDelete} />)}
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+            {groupByDay(filtered).map(group => (
+              <div key={group.key}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: C.accent }}>{group.key}</span>
+                  <span style={{ fontSize: 11, color: C.muted, background: C.surface2, borderRadius: 20, padding: "2px 8px", border: "1px solid " + C.border }}>{group.items.length}</span>
+                  <div style={{ flex: 1, height: 1, background: C.border }} />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 14 }}>
+                  {group.items.map(link => <LinkCard key={link.id} link={link} projects={projects} categories={categories} onEdit={openEdit} onArchive={l => setStatus(l, "archived")} onUnarchive={l => setStatus(l, "active")} onDelete={doDelete} />)}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -323,14 +355,14 @@ export default function LinkVault() {
 
       <ConfirmModal data={confirm} onCancel={() => setConfirm(null)} onConfirm={() => { confirm.onYes(); setConfirm(null); }} />
 
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        input::placeholder, textarea::placeholder { color: #6b7a99; }
-        select option { background: #1c2230; color: #f0f4ff; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #0a0c10; } ::-webkit-scrollbar-thumb { background: #252d3d; border-radius: 3px; }
-      `}</style>
+      <style>{\`
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+* { box-sizing: border-box; margin: 0; padding: 0; }
+input::placeholder, textarea::placeholder { color: #6b7a99; }
+select option { background: #1c2230; color: #f0f4ff; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #0a0c10; } ::-webkit-scrollbar-thumb { background: #252d3d; border-radius: 3px; }
+\`}</style>
     </div>
   );
 }
